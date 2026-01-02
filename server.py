@@ -68,17 +68,18 @@ def leaderboard():
 
 @app.post("/score")
 def add_score(s: Score):
+    print(f"DEBUG: Ricevuto tentativo di salvataggio per: {s.name} con punti: {s.score}")
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        # IMPORTANTE: Postgres usa %s invece di ? per i parametri
         cur.execute("INSERT INTO scores (name, score) VALUES (%s, %s)", (s.name[:12], s.score))
         conn.commit()
+        print("DEBUG: Salvataggio nel DB riuscito!")
         cur.close()
         conn.close()
         return {"ok": True}
     except Exception as e:
-        print(f"Errore salvataggio score: {e}")
+        print(f"ERRORE CRITICO SALVATAGGIO: {e}")
         return {"ok": False, "error": str(e)}
 
 if __name__ == "__main__":
