@@ -1,12 +1,13 @@
+import os
+import psycopg2
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-import psycopg2
-import os
+from typing import List
 
 app = FastAPI()
 
-# Permette al gioco (Web e Locale) di comunicare con il server
+# --- CONFIGURAZIONE CORS ---
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -14,75 +15,75 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Recupera l'URL del database dalle variabili d'ambiente di Render
-DATABASE_URL = os.environ.get("DATABASE_URL")
+# --- CONFIGURAZIONE DATABASE POSTGRESQL ---
+# Utilizzo l'External URL fornito (può essere sovrascritto da variabili d'ambiente)
+DB_URL = os.environ.get(
+    "DATABASE_URL", 
+    "postgresql://ffgame_db_user:mD3mSzbf4zTtd6JGv1pZfOmThdwKJg2O@dpg-d5bphgmmcj7s739f3pmg-a.oregon-postgres.render.com/ffgame_db"
+)
 
+# Modello dati per ricezione punteggio
 class Score(BaseModel):
     name: str
     score: int
 
-def get_db_connection():
-    """Crea una connessione al database PostgreSQL"""
-    conn = psycopg2.connect(DATABASE_URL)
-    return conn
-
+# --- INIZIALIZZAZIONE DB ---
 def init_db():
-    """Inizializza la tabella se non esiste"""
     try:
-        conn = get_db_connection()
+        # Aggiungiamo sslmode='require' per connessioni sicure su Render
+        conn = psycopg2.connect(DB_URL, sslmode='require')
         cur = conn.cursor()
-        # Nota: In Postgres usiamo SERIAL per l'auto-incremento invece di INTEGER PRIMARY KEY
         cur.execute("""
             CREATE TABLE IF NOT EXISTS scores (
                 id SERIAL PRIMARY KEY,
                 name VARCHAR(50),
                 score INTEGER
-            );
+            )
         """)
         conn.commit()
         cur.close()
         conn.close()
-        print("Database inizializzato correttamente.")
+        print("Database PostgreSQL inizializzato correttamente.")
     except Exception as e:
         print(f"Errore inizializzazione DB: {e}")
 
-# Inizializziamo il DB all'avvio
-if DATABASE_URL:
-    init_db()
-else:
-    print("ATTENZIONE: DATABASE_URL non trovato nelle variabili d'ambiente!")
+init_db()
+
+# --- ENDPOINTS ---
 
 @app.get("/leaderboard")
 def leaderboard():
     try:
-        conn = get_db_connection()
+        conn = psycopg2.connect(DB_URL, sslmode='require')
         cur = conn.cursor()
+        # Prende i primi 10 punteggi in ordine decrescente
         cur.execute("SELECT name, score FROM scores ORDER BY score DESC LIMIT 10")
-        results = cur.fetchall()
+        data = cur.fetchall()
         cur.close()
         conn.close()
-        return results
+        # Restituisce una lista di liste/tuple es: [["Mario", 100], ["Luigi", 90]]
+        return data
     except Exception as e:
-        print(f"Errore lettura leaderboard: {e}")
+        print(f"Errore lettura DB: {e}")
         return []
 
 @app.post("/score")
 def add_score(s: Score):
-    print(f"DEBUG: Ricevuto tentativo di salvataggio per: {s.name} con punti: {s.score}")
     try:
-        conn = get_db_connection()
+        conn = psycopg2.connect(DB_URL, sslmode='require')
         cur = conn.cursor()
-        cur.execute("INSERT INTO scores (name, score) VALUES (%s, %s)", (s.name[:12], s.score))
+        # Inserisce il nome (troncato a 12 char per sicurezza grafica) e il punteggio
+        safe_name = s.name[:12]
+        cur.execute("INSERT INTO scores (name, score) VALUES (%s, %s)", (safe_name, s.score))
         conn.commit()
-        print("DEBUG: Salvataggio nel DB riuscito!")
         cur.close()
         conn.close()
         return {"ok": True}
     except Exception as e:
-        print(f"ERRORE CRITICO SALVATAGGIO: {e}")
+        print(f"Errore scrittura DB: {e}")
         return {"ok": False, "error": str(e)}
 
 if __name__ == "__main__":
     import uvicorn
-    port = int(os.environ.get("PORT", 8000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    port = int(os.environ.get("PORT", 10000)) # Render usa spesso la 10000 di default interno o la env PORT
+    uvicorn.run(app, host="0.0.0.0", port=port)a
