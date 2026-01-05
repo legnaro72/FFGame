@@ -93,6 +93,11 @@ def add_score(s: Score):
     except Exception as e:
         print(f"Errore scrittura DB: {e}")
         return {"ok": False, "error": str(e)}
+        
+@app.get("/")
+def root():
+    return {"status": "alive"}
+
 
 # Avvio server (necessario per Render)
 if __name__ == "__main__":
