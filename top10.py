@@ -5,8 +5,8 @@ import time
 
 # --- CONFIGURAZIONE PAGINA ---
 st.set_page_config(
-    page_title="Space Shooter Leaderboard",
-    page_icon="🚀",
+    page_title="LeleDidi Top10",
+    page_icon="❤️🐘🧌⚡",
     layout="centered",
     initial_sidebar_state="collapsed"
 )
