@@ -76,7 +76,7 @@ st.markdown("""
 
 # --- HEADER ---
 st.title("🏆 CLASSIFICA GENERALE 🏆")
-st.markdown("<p style='text-align: center; color: #888;'>TOP 10 PILOTI DELLA GALASSIA</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: #888;'>TOP 10 DELLA LELEDIDI ARENA</p>", unsafe_allow_html=True)
 
 # --- LOGICA FETCH DATI ---
 def get_data():
